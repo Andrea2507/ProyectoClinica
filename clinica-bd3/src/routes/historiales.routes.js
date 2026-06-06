@@ -1,11 +1,14 @@
-const { Router } = require("express");
-const historialesController = require("../controllers/historiales.controller");
+const express = require('express');
+const {
+  crearHistorial,
+  obtenerHistoriales,
+  obtenerHistorialPorPaciente
+} = require('../controllers/historiales.controller');
 
-const router = Router();
+const router = express.Router();
 
-router.get("/", historialesController.listarHistoriales);
-router.post("/", historialesController.crearHistorial);
-router.get("/:pacienteId", historialesController.obtenerHistorialPorPaciente);
-router.patch("/:id", historialesController.actualizarHistorial);
+router.post('/', crearHistorial);
+router.get('/', obtenerHistoriales);
+router.get('/paciente/:pacienteId', obtenerHistorialPorPaciente);
 
 module.exports = router;

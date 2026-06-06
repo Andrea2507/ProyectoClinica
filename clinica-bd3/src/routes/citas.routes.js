@@ -1,12 +1,12 @@
-const { Router } = require("express");
-const citasController = require("../controllers/citas.controller");
+const express = require('express');
+const {
+  obtenerCitas,
+  cancelarCita
+} = require('../controllers/citas.controller');
 
-const router = Router();
+const router = express.Router();
 
-router.get("/", citasController.listarCitas);
-router.post("/", citasController.crearCita);
-router.get("/:id", citasController.obtenerCita);
-router.put("/:id", citasController.actualizarCita);
-router.delete("/:id", citasController.eliminarCita);
+router.get('/', obtenerCitas);
+router.post('/:id/cancelar', cancelarCita);
 
 module.exports = router;

@@ -1,25 +1,14 @@
-const { Pool } = require("pg");
+const path = require('path');
+const { Pool } = require('pg');
+
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 const pool = new Pool({
   host: process.env.POSTGRES_HOST,
-  port: Number(process.env.POSTGRES_PORT || 5432),
+  port: Number(process.env.POSTGRES_PORT),
   database: process.env.POSTGRES_DATABASE,
   user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
+  password: process.env.POSTGRES_PASSWORD
 });
 
-async function testPostgresConnection() {
-  const client = await pool.connect();
-
-  try {
-    await client.query("SELECT 1");
-    console.log("PostgreSQL conectado");
-  } finally {
-    client.release();
-  }
-}
-
-module.exports = {
-  pool,
-  testPostgresConnection,
-};
+module.exports = pool;

@@ -1,27 +1,53 @@
-async function listarCitas(req, res) {
-  res.json({ message: "Listado de citas pendiente de implementar" });
+const pool = require('../config/postgres');
+
+async function obtenerCitas(req, res) {
+  try {
+    const resultado = await pool.query(`
+      SELECT 
+        c.id,
+        c.fecha_inicio,
+        c.fecha_fin,
+        c.estado,
+        c.motivo,
+        p.nombres || ' ' || p.apellidos AS paciente,
+        m.nombres || ' ' || m.apellidos AS medico
+      FROM citas c
+      INNER JOIN pacientes p ON p.id = c.paciente_id
+      INNER JOIN medicos m ON m.id = c.medico_id
+      ORDER BY c.fecha_inicio
+    `);
+
+    res.json(resultado.rows);
+  } catch (error) {
+    res.status(500).json({
+      mensaje: 'Error al obtener citas',
+      error: error.message
+    });
+  }
 }
 
-async function crearCita(req, res) {
-  res.status(201).json({ message: "Creacion de cita pendiente de implementar" });
-}
 
-async function obtenerCita(req, res) {
-  res.json({ message: "Detalle de cita pendiente de implementar", id: req.params.id });
-}
+async function cancelarCita(req, res) {
+  const { id } = req.params;
+  const { motivo_cancelacion, usuario_id } = req.body;
 
-async function actualizarCita(req, res) {
-  res.json({ message: "Actualizacion de cita pendiente de implementar", id: req.params.id });
-}
+  try {
+    await pool.query(
+      `CALL sp_cancelar_cita($1, $2, $3)`,
+      [id, motivo_cancelacion, usuario_id]
+    );
 
-async function eliminarCita(req, res) {
-  res.json({ message: "Eliminacion de cita pendiente de implementar", id: req.params.id });
+    res.json({
+      mensaje: 'Cita cancelada correctamente'
+    });
+  } catch (error) {
+    res.status(400).json({
+      mensaje: 'Error al cancelar cita',
+      error: error.message
+    });
+  }
 }
-
 module.exports = {
-  listarCitas,
-  crearCita,
-  obtenerCita,
-  actualizarCita,
-  eliminarCita,
+  obtenerCitas,
+  cancelarCita
 };

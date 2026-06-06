@@ -41,3 +41,8 @@ Thumbs.db
 # Local cache
 .npm/
 .eslintcache
+
+# Documentos que no quiero subir todavia
+README.md
+docs/bitacora_ia.md
+docs/decisiones_diseno.md

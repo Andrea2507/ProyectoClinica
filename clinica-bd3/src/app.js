@@ -1,45 +1,40 @@
-require("dotenv").config();
+const express = require('express');
+const cors = require('cors');
+require('dotenv').config();
 
-const express = require("express");
-const cors = require("cors");
-const { testPostgresConnection } = require("./config/postgres");
-const { connectMongo } = require("./config/mongo");
+const pacientesRoutes = require('./routes/pacientes.routes');
+const medicosRoutes = require('./routes/medicos.routes');
+const citasRoutes = require('./routes/citas.routes');
+const pagosRoutes = require('./routes/pagos.routes');
+const reportesRoutes = require('./routes/reportes.routes');
+const historialesRoutes = require('./routes/historiales.routes');
+const reportesMongoRoutes = require('./routes/reportesMongo.routes');
 
-const citasRoutes = require("./routes/citas.routes");
-const pagosRoutes = require("./routes/pagos.routes");
-const reportesRoutes = require("./routes/reportes.routes");
-const historialesRoutes = require("./routes/historiales.routes");
+const conectarMongo = require('./config/mongo');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
 
-app.get("/health", (req, res) => {
+app.get('/', (req, res) => {
   res.json({
-    ok: true,
-    service: "clinica-bd3",
+    mensaje: 'API de clínica funcionando'
   });
 });
 
-app.use("/api/citas", citasRoutes);
-app.use("/api/pagos", pagosRoutes);
-app.use("/api/reportes", reportesRoutes);
-app.use("/api/historiales", historialesRoutes);
+app.use('/api/pacientes', pacientesRoutes);
+app.use('/api/medicos', medicosRoutes);
+app.use('/api/citas', citasRoutes);
+app.use('/api/pagos', pagosRoutes);
+app.use('/api/reportes', reportesRoutes);
+app.use('/api/historiales', historialesRoutes);
+app.use('/api/reportes-mongo', reportesMongoRoutes);
 
-async function startServer() {
-  await testPostgresConnection();
-  await connectMongo();
+const puerto = process.env.PORT || 3000;
 
-  app.listen(PORT, () => {
-    console.log(`Servidor escuchando en http://localhost:${PORT}`);
-  });
-}
+conectarMongo();
 
-startServer().catch((error) => {
-  console.error("No se pudo iniciar el servidor:", error);
-  process.exit(1);
+app.listen(puerto, () => {
+  console.log(`Servidor corriendo en http://localhost:${puerto}`);
 });
-
-module.exports = app;

@@ -1,16 +1,15 @@
-const mongoose = require("mongoose");
+const path = require('path');
+const mongoose = require('mongoose');
 
-async function connectMongo() {
-  const uri = process.env.MONGO_URI;
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
-  if (!uri) {
-    throw new Error("MONGO_URI no esta configurada");
+async function conectarMongo() {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log('MongoDB conectado correctamente');
+  } catch (error) {
+    console.error('Error al conectar MongoDB:', error.message);
   }
-
-  await mongoose.connect(uri);
-  console.log("MongoDB conectado");
 }
 
-module.exports = {
-  connectMongo,
-};
+module.exports = conectarMongo;
