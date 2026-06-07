@@ -46,4 +46,10 @@ Thumbs.db
 README.md
 docs/bitacora_ia.md
 docs/decisiones_diseno.md
-docs/reporte_perfomance.md
+docs/reporte_performance.md
+docs/respaldo.md
+
+# Backups o archivos comprimidos fuera del proyecto
+/backup.sql
+/clinica_backup.backup
+/clinica-bd3.zip

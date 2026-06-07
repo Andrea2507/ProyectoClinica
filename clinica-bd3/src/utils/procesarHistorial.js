@@ -6,7 +6,7 @@ function limpiarTexto(valor) {
   return valor.trim().replace(/\s+/g, ' ');
 }
 
-function procesarHistorialClinico(datos) {
+function procesarHistorialClinico(datos = {}) {
   return {
     ...datos,
     especialidad: limpiarTexto(datos.especialidad),

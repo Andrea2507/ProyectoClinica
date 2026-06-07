@@ -7,7 +7,8 @@ async function agendaDiaria(req, res) {
     const resultado = await pool.query(`
       SELECT *
       FROM vw_agenda_diaria
-      WHERE fecha_inicio::date = $1::date
+      WHERE fecha_inicio >= $1::date
+        AND fecha_inicio < ($1::date + INTERVAL '1 day')
       ORDER BY fecha_inicio
     `, [fecha]);
 

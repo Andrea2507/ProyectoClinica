@@ -95,3 +95,62 @@ EXCEPTION
         RAISE;
 END;
 $$;
+
+-- SEGUNDO PROCEDURE 
+CREATE OR REPLACE PROCEDURE sp_cancelar_cita(
+    p_cita_id INTEGER,
+    p_motivo_cancelacion TEXT,
+    p_usuario_id INTEGER
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_estado_actual VARCHAR;
+BEGIN
+    SELECT estado
+    INTO v_estado_actual
+    FROM citas
+    WHERE id = p_cita_id
+    FOR UPDATE;
+
+    IF v_estado_actual IS NULL THEN
+        RAISE EXCEPTION 'La cita no existe';
+    END IF;
+
+    IF v_estado_actual = 'atendida' THEN
+        RAISE EXCEPTION 'No se puede cancelar una cita atendida';
+    END IF;
+
+    IF p_motivo_cancelacion IS NULL OR LENGTH(TRIM(p_motivo_cancelacion)) = 0 THEN
+        RAISE EXCEPTION 'Debe ingresar un motivo de cancelación';
+    END IF;
+
+    UPDATE citas
+    SET estado = 'cancelada',
+        motivo_cancelacion = p_motivo_cancelacion
+    WHERE id = p_cita_id;
+
+    INSERT INTO auditoria (
+        usuario_id,
+        entidad,
+        entidad_id,
+        operacion,
+        detalles
+    )
+    VALUES (
+        p_usuario_id,
+        'citas',
+        p_cita_id,
+        'cancelacion_cita',
+        jsonb_build_object(
+            'estado_anterior', v_estado_actual,
+            'estado_nuevo', 'cancelada',
+            'motivo_cancelacion', p_motivo_cancelacion
+        )
+    );
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE;
+END;
+$$;
