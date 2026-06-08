@@ -6,6 +6,7 @@ const router = express.Router();
 router.get('/top-diagnosticos', reportesMongoController.topDiagnosticos);
 router.get('/medicamentos-especialidad', reportesMongoController.medicamentosPorEspecialidad);
 router.get('/signos-vitales', reportesMongoController.signosVitalesPorGrupo);
+router.get('/tiempo-promedio-consultas', reportesMongoController.tiempoPromedioConsultas);
 router.get('/resumen-clinico', reportesMongoController.resumenClinico);
 
 module.exports = router;

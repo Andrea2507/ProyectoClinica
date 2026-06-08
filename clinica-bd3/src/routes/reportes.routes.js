@@ -8,5 +8,6 @@ router.get('/facturas-pendientes', reportesController.facturasPendientes);
 router.get('/facturacion-mensual', reportesController.facturacionMensual);
 router.get('/ranking-medicos', reportesController.rankingMedicos);
 router.get('/saldo-paciente/:pacienteId', reportesController.saldoPaciente);
+router.get('/disponibilidad-medico', reportesController.disponibilidadMedico);
 
 module.exports = router;

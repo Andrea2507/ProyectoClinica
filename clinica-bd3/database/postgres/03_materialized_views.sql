@@ -1,7 +1,6 @@
 DROP MATERIALIZED VIEW IF EXISTS mv_facturacion_mensual;
 DROP MATERIALIZED VIEW IF EXISTS mv_ranking_medicos_trimestral;
 
-DROP MATERIALIZED VIEW IF EXISTS mv_facturacion_mensual;
 
 CREATE MATERIALIZED VIEW mv_facturacion_mensual AS
 SELECT

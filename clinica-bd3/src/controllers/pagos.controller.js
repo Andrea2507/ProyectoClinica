@@ -1,5 +1,21 @@
 const pool = require('../config/postgres');
 
+function mensajeErrorPago(error) {
+  if (error.constraint === 'pagos_metodo_pago_check') {
+    return 'El metodo de pago debe ser efectivo, tarjeta, transferencia o cheque.';
+  }
+
+  if (error.constraint === 'pagos_monto_check') {
+    return 'El monto del pago debe ser mayor que cero.';
+  }
+
+  if (error.constraint === 'pagos_factura_id_fkey') {
+    return 'La factura indicada no existe.';
+  }
+
+  return error.message;
+}
+
 async function listarPagos(req, res) {
   try {
     const resultado = await pool.query(`
@@ -48,7 +64,7 @@ async function registrarPago(req, res) {
   } catch (error) {
     res.status(400).json({
       mensaje: 'Error al registrar pago',
-      error: error.message
+      error: mensajeErrorPago(error)
     });
   }
 }

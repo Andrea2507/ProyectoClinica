@@ -78,6 +78,50 @@ CREATE TABLE citas (
   CHECK (estado <> 'cancelada' OR motivo_cancelacion IS NOT NULL)
 );
 
+CREATE OR REPLACE FUNCTION trg_validar_cita()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.estado IN ('programada', 'confirmada', 'atendida') THEN
+    IF NOT EXISTS (
+      SELECT 1
+      FROM horarios_medicos hm
+      WHERE hm.medico_id = NEW.medico_id
+        AND hm.activo = true
+        AND hm.dia_semana = EXTRACT(ISODOW FROM NEW.fecha_inicio)
+        AND hm.hora_inicio <= NEW.fecha_inicio::time
+        AND hm.hora_fin >= NEW.fecha_fin::time
+    ) THEN
+      RAISE EXCEPTION 'La cita debe estar dentro del horario de atencion del medico';
+    END IF;
+
+    IF EXISTS (
+      SELECT 1
+      FROM citas c
+      WHERE c.id <> COALESCE(NEW.id, -1)
+        AND c.paciente_id = NEW.paciente_id
+        AND c.medico_id = NEW.medico_id
+        AND c.fecha_inicio::date = NEW.fecha_inicio::date
+        AND c.estado IN ('programada', 'confirmada', 'atendida')
+    ) THEN
+      RAISE EXCEPTION 'El paciente ya tiene una cita activa con este medico en ese dia';
+    END IF;
+  END IF;
+
+  IF NEW.estado = 'cancelada'
+     AND (NEW.motivo_cancelacion IS NULL OR LENGTH(TRIM(NEW.motivo_cancelacion)) = 0) THEN
+    RAISE EXCEPTION 'Una cita cancelada debe registrar el motivo de cancelacion';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER validar_cita
+BEFORE INSERT OR UPDATE OF paciente_id, medico_id, fecha_inicio, fecha_fin, estado, motivo_cancelacion
+ON citas
+FOR EACH ROW
+EXECUTE FUNCTION trg_validar_cita();
+
 ALTER TABLE citas
 ADD CONSTRAINT citas_medico_sin_solape
 EXCLUDE USING gist (
@@ -85,6 +129,10 @@ EXCLUDE USING gist (
   tsrange(fecha_inicio, fecha_fin, '[)') WITH &&
 )
 WHERE (estado IN ('programada', 'confirmada', 'atendida'));
+
+CREATE UNIQUE INDEX citas_paciente_medico_dia_activa_idx
+ON citas (paciente_id, medico_id, (fecha_inicio::date))
+WHERE estado IN ('programada', 'confirmada', 'atendida');
 
 CREATE TABLE servicios (
   id SERIAL PRIMARY KEY,
@@ -129,6 +177,90 @@ CREATE TABLE pagos (
   pagado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE OR REPLACE FUNCTION trg_validar_pago()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_total NUMERIC;
+  v_estado VARCHAR;
+  v_pagado NUMERIC;
+BEGIN
+  SELECT total, estado
+  INTO v_total, v_estado
+  FROM facturas
+  WHERE id = NEW.factura_id
+  FOR UPDATE;
+
+  IF v_total IS NULL THEN
+    RAISE EXCEPTION 'La factura no existe';
+  END IF;
+
+  IF v_estado = 'anulada' THEN
+    RAISE EXCEPTION 'No se pueden registrar pagos sobre facturas anuladas';
+  END IF;
+
+  SELECT COALESCE(SUM(monto), 0)
+  INTO v_pagado
+  FROM pagos
+  WHERE factura_id = NEW.factura_id
+    AND id <> COALESCE(NEW.id, -1);
+
+  IF (v_pagado + NEW.monto) > v_total THEN
+    RAISE EXCEPTION 'El monto total de pagos no puede exceder el total de la factura';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION trg_actualizar_estado_factura_por_pago()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_factura_id INTEGER;
+  v_total NUMERIC;
+  v_pagado NUMERIC;
+  v_estado VARCHAR;
+BEGIN
+  v_factura_id := COALESCE(NEW.factura_id, OLD.factura_id);
+
+  SELECT total
+  INTO v_total
+  FROM facturas
+  WHERE id = v_factura_id;
+
+  SELECT COALESCE(SUM(monto), 0)
+  INTO v_pagado
+  FROM pagos
+  WHERE factura_id = v_factura_id;
+
+  IF v_pagado = 0 THEN
+    v_estado := 'pendiente';
+  ELSIF v_pagado < v_total THEN
+    v_estado := 'pagada_parcial';
+  ELSE
+    v_estado := 'pagada';
+  END IF;
+
+  UPDATE facturas
+  SET estado = v_estado
+  WHERE id = v_factura_id
+    AND estado <> 'anulada';
+
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER validar_pago
+BEFORE INSERT OR UPDATE OF factura_id, monto
+ON pagos
+FOR EACH ROW
+EXECUTE FUNCTION trg_validar_pago();
+
+CREATE TRIGGER actualizar_estado_factura_por_pago
+AFTER INSERT OR UPDATE OF factura_id, monto OR DELETE
+ON pagos
+FOR EACH ROW
+EXECUTE FUNCTION trg_actualizar_estado_factura_por_pago();
 
 CREATE TABLE auditoria (
   id SERIAL PRIMARY KEY,

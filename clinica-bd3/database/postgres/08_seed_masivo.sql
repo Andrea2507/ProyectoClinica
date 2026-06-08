@@ -50,7 +50,7 @@ LATERAL (
 ) datos;
 
 
--- Horarios medicos: lunes a viernes, 8:00 a 16:00
+-- Horarios medicos: semana completa, 8:00 a 16:00
 INSERT INTO horarios_medicos (medico_id, dia_semana, hora_inicio, hora_fin, activo)
 SELECT
   m.id,
@@ -59,7 +59,7 @@ SELECT
   TIME '16:00',
   true
 FROM medicos m
-CROSS JOIN generate_series(1, 5) AS d(dia);
+CROSS JOIN generate_series(1, 7) AS d(dia);
 
 
 -- Pacientes: 30
@@ -94,7 +94,8 @@ VALUES
 ('Control medico', 'consulta', 120.00, true);
 
 
--- Citas: 200 distribuidas en los ultimos 6 meses
+-- Citas: 200 distribuidas en los ultimos 6 meses.
+-- Las primeras 150 quedan atendidas para coincidir con los historiales de MongoDB.
 INSERT INTO citas (
   paciente_id,
   medico_id,
@@ -108,16 +109,17 @@ INSERT INTO citas (
 SELECT
   ((i - 1) % 30) + 1 AS paciente_id,
   ((i - 1) % 10) + 1 AS medico_id,
-  (CURRENT_DATE - ((i % 180) || ' days')::interval)
-    + ((8 + (i % 8)) || ' hours')::interval AS fecha_inicio,
-  (CURRENT_DATE - ((i % 180) || ' days')::interval)
-    + ((8 + (i % 8)) || ' hours')::interval
+  (CURRENT_DATE - ((180 - (((i - 1) / 10)::integer * 9)) || ' days')::interval)
+    + ((8 + ((i - 1) % 8)) || ' hours')::interval AS fecha_inicio,
+  (CURRENT_DATE - ((180 - (((i - 1) / 10)::integer * 9)) || ' days')::interval)
+    + ((8 + ((i - 1) % 8)) || ' hours')::interval
     + INTERVAL '30 minutes' AS fecha_fin,
   CASE
+    WHEN i <= 150 THEN 'atendida'
     WHEN i % 10 = 0 THEN 'cancelada'
     WHEN i % 7 = 0 THEN 'confirmada'
     WHEN i % 3 = 0 THEN 'programada'
-    ELSE 'atendida'
+    ELSE 'no_asistio'
   END AS estado,
   CASE
     WHEN i % 5 = 0 THEN 'Control de seguimiento'
@@ -127,7 +129,7 @@ SELECT
     ELSE 'Consulta de rutina'
   END AS motivo,
   CASE
-    WHEN i % 10 = 0 THEN 'Paciente solicito cancelacion'
+    WHEN i > 150 AND i % 10 = 0 THEN 'Paciente solicito cancelacion'
     ELSE NULL
   END AS motivo_cancelacion,
   ((i - 1) % 4) + 1 AS creado_por
@@ -236,3 +238,19 @@ SELECT
   ) AS detalles,
   CURRENT_TIMESTAMP - ((i % 180) || ' days')::interval
 FROM generate_series(1, 500) AS i;
+
+UPDATE facturas
+SET subtotal = total + descuento
+WHERE subtotal = 0
+  AND total > 0;
+
+DO $$
+BEGIN
+  IF to_regclass('mv_facturacion_mensual') IS NOT NULL THEN
+    REFRESH MATERIALIZED VIEW mv_facturacion_mensual;
+  END IF;
+
+  IF to_regclass('mv_ranking_medicos_trimestral') IS NOT NULL THEN
+    REFRESH MATERIALIZED VIEW mv_ranking_medicos_trimestral;
+  END IF;
+END $$;

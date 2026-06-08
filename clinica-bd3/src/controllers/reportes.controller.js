@@ -113,10 +113,36 @@ async function saldoPaciente(req, res) {
   }
 }
 
+async function disponibilidadMedico(req, res) {
+  const { medicoId, fecha } = req.query;
+
+  if (!medicoId || !fecha) {
+    return res.status(400).json({
+      mensaje: 'Debe enviar medicoId y fecha'
+    });
+  }
+
+  try {
+    const resultado = await pool.query(`
+      SELECT *
+      FROM fn_disponibilidad_medico($1, $2::date)
+      ORDER BY hora_inicio
+    `, [medicoId, fecha]);
+
+    res.json(resultado.rows);
+  } catch (error) {
+    res.status(500).json({
+      mensaje: 'Error al obtener disponibilidad del medico',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   agendaDiaria,
   facturasPendientes,
   facturacionMensual,
   rankingMedicos,
-  saldoPaciente
+  saldoPaciente,
+  disponibilidadMedico
 };

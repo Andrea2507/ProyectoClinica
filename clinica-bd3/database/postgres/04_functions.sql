@@ -55,6 +55,6 @@ BEGIN
     FROM horarios_medicos hm
     WHERE hm.medico_id = p_medico_id
       AND hm.activo = true
-      AND hm.dia_semana = EXTRACT(DOW FROM p_fecha);
+      AND hm.dia_semana = EXTRACT(ISODOW FROM p_fecha);
 END;
 $$ LANGUAGE plpgsql;
